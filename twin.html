@@ -88,7 +88,7 @@
     background: var(--green); color: #062018; border: none; padding: 13px 26px; font-size: 15px; font-weight: 800;
     cursor: pointer; border-radius: 12px; box-shadow: 0 10px 30px rgba(70,212,147,.35); animation: pulse 1.6s ease-in-out infinite; }
   #hint { position: absolute; left: 50%; transform: translateX(-50%); top: 16px; z-index: 1000; background: var(--panel);
-    backdrop-filter: blur(12px); border: 1px solid var(--line); border-radius: 10px; padding: 7px 14px; font-size: 12px; color: #c6cedb; }
+    backdrop-filter: blur(12px); border: 1px solid var(--line); border-radius: 10px; padding: 7px 14px; font-size: 12px; color: #c6cedb; display: none; }
   #hint b { color: var(--teal); }
 
   .maplabel { background: rgba(10,13,18,.9); border: 1px solid var(--line); border-radius: 7px; color: #fff;
@@ -174,11 +174,20 @@ let depotsDrawn = false;
 let twinMarker = null, trailLine = null, planLine = null, pickPin = null, dropPin = null;
 let personMarker = null, ringMarker = null;
 let follow = true, lastRouteId = null, didInitialFit = false;
-let dropMarker = null;
+let dropMarker = null, liveDropoff = false;
 map.on('dragstart', () => { follow = false; });
 
-// customer taps a precise drop point
+function flash(msg) {
+  let t = document.getElementById('flash');
+  if (!t) { t = document.createElement('div'); t.id = 'flash'; document.body.appendChild(t);
+    t.style.cssText = 'position:absolute;left:50%;top:16px;transform:translateX(-50%);z-index:1300;background:var(--panel);backdrop-filter:blur(12px);border:1px solid var(--line);border-radius:10px;padding:7px 14px;font-size:12px;color:#c6cedb;opacity:0;transition:opacity .2s'; }
+  t.textContent = msg; t.style.opacity = '1';
+  clearTimeout(flash._t); flash._t = setTimeout(() => t.style.opacity = '0', 2200);
+}
+
+// customer taps a precise drop point — only meaningful while a drone is approaching a dropoff
 map.on('click', async (e) => {
+  if (!liveDropoff) { flash('No active delivery to place a drop point for'); return; }
   const { lat, lng } = e.latlng;
   const html = '<svg width="22" height="28" viewBox="0 0 22 28"><path d="M11 27C11 27 20 16.5 20 10A9 9 0 1 0 2 10C2 16.5 11 27 11 27Z" fill="#2ee6c6" stroke="#fff" stroke-width="1.5"/><circle cx="11" cy="10" r="3.4" fill="#06231d"/></svg>';
   if (!dropMarker) dropMarker = L.marker([lat, lng], { icon: L.divIcon({ className: '', iconSize: [22, 28], iconAnchor: [11, 27], html }) }).addTo(map)
@@ -303,7 +312,9 @@ async function tick() {
   try {
     const tr = await fetch('data/twin.json?t=' + Date.now(), { cache: 'no-store' });
     if (tr.ok) { const t = await tr.json();
-      if (typeof t.lat === 'number') { fresh = true;
+      // treat telemetry as live only if it's recent (the bridge stamps ts each write)
+      const liveAge = t.ts ? (Date.now() / 1000 - t.ts) : 1e9;
+      if (typeof t.lat === 'number' && liveAge < 6) { fresh = true;
         const pos = [t.lat, t.lon]; const r = t.route || {};
         if (!twinMarker) { twinMarker = L.marker(pos, { icon: droneIcon(t.heading), zIndexOffset: 1000 }).addTo(map);
           twinMarker.bindTooltip('LX-01', { permanent: true, direction: 'right', offset: [12, 0], className: 'maplabel dr' }); }
@@ -321,6 +332,10 @@ async function tick() {
 
         if (t.handover) showPerson(pos, t.state === 'handover_pickup' ? 'pickup' : 'dropoff');
         else hidePerson();
+
+        // only invite a drop-point tap when a drone is actually approaching a dropoff
+        liveDropoff = r.phase === 'to dropoff' || ['descending', 'servoing', 'awaiting_confirm'].includes(t.state);
+        document.getElementById('hint').style.display = liveDropoff ? 'block' : 'none';
 
         if (follow) map.panTo(pos, { animate: true, duration: .4 });
         if (!didInitialFit && pickPin && dropPin) { fitAll(); follow = true; didInitialFit = true; }
@@ -356,7 +371,12 @@ async function tick() {
       }
     }
   } catch (e) {}
-  if (!fresh) { const st = document.getElementById('status'); st.textContent = 'Awaiting telemetry'; st.className = 'idle'; }
+  if (!fresh) {
+    const st = document.getElementById('status'); st.textContent = 'Live flight offline'; st.className = 'idle';
+    liveDropoff = false;
+    document.getElementById('hint').style.display = 'none';
+    document.getElementById('confirm').style.display = 'none';
+  }
 }
 setInterval(tick, 500);
 tick();
