@@ -3,107 +3,157 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Cambridge Delivery Drones -- Live</title>
+<title>Locust — Cambridge Operations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/proj4@2.11.0/dist/proj4.js"></script>
 <style>
-  html, body { margin: 0; height: 100%; background: #0b0e13; font-family: -apple-system, Segoe UI, Roboto, sans-serif; overflow: hidden; }
+  :root {
+    --bg: #0a0d12; --panel: rgba(13,17,24,.86); --line: rgba(255,255,255,.09);
+    --text: #eaeef5; --muted: #8b95a7; --faint: #5c6677;
+    --teal: #2ee6c6; --green: #46d493; --amber: #f2b84b; --coral: #f0625d; --orange: #f59e6b; --steel: #9fb0c8;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--text);
+    -webkit-font-smoothing: antialiased; }
   #map { position: absolute; inset: 0; }
-  .card { position: absolute; z-index: 1000; background: rgba(14,18,26,.93); color: #e8edf4;
-    border: 1px solid #283142; border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.5); }
-  #hud { top: 12px; left: 12px; width: 260px; padding: 14px 16px; }
-  #hud h1 { font-size: 13px; margin: 0 0 2px; letter-spacing: .04em; color: #6fd3ff; text-transform: uppercase; }
-  #hud .sub { font-size: 11px; color: #8b97a8; margin-bottom: 10px; }
-  #status { font-size: 16px; font-weight: 700; margin: 6px 0 10px; color: #7CFFB2; }
-  #status.pickup { color: #ffd166; } #status.idle { color: #8b97a8; } #status.land { color: #ff8e72; }
-  .row { display: flex; justify-content: space-between; gap: 14px; font-size: 13px; margin: 4px 0; }
-  .k { color: #8b97a8; } .v { color: #fff; font-variant-numeric: tabular-nums; font-weight: 600; }
-  .job { margin-top: 10px; padding-top: 10px; border-top: 1px solid #283142; font-size: 12px; line-height: 1.5; }
-  .job .lbl { color: #8b97a8; } .job .pk { color: #7CFFB2; font-weight: 600; } .job .dp { color: #ff8e72; font-weight: 600; }
-  .job .item { color: #fff; font-weight: 600; }
-  #weather { top: 12px; right: 12px; width: 168px; padding: 12px 14px; }
-  #weather h2 { font-size: 11px; margin: 0 0 8px; color: #8b97a8; letter-spacing: .06em; text-transform: uppercase; }
-  #weather .wx { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-  #windArrow { transition: transform .5s; }
-  #gstop { display: none; margin-top: 8px; background: #5a1f1f; border: 1px solid #ff6b6b; color: #ffd2d2;
-    border-radius: 7px; padding: 5px 8px; font-size: 11px; font-weight: 700; text-align: center; }
-  #legend { bottom: 12px; left: 12px; padding: 10px 14px; font-size: 12px; }
-  #legend .li { display: flex; align-items: center; gap: 8px; margin: 4px 0; color: #cdd6e2; }
-  #legend .sw { width: 16px; display: inline-flex; justify-content: center; }
-  #btn { position: absolute; bottom: 12px; right: 12px; z-index: 1000; cursor: pointer;
-    background: #1b2433; color: #cfe6ff; border: 1px solid #2c3a52; border-radius: 8px; padding: 8px 12px; font-size: 12px; }
-  /* onboard drone-cam panel */
-  #cam { bottom: 52px; right: 12px; width: 256px; padding: 8px; }
-  #cam h2 { font-size: 11px; margin: 0 0 6px; color: #8b97a8; letter-spacing: .06em; text-transform: uppercase; display: flex; justify-content: space-between; }
-  #camimg { width: 240px; height: 180px; display: block; border-radius: 6px; background: #05070a; image-rendering: pixelated; }
-  #camstat { font-size: 11px; margin-top: 5px; color: #8b97a8; display: flex; justify-content: space-between; }
-  #camstat .lock { color: #90ff8c; font-weight: 700; } #camstat .lock.no { color: #ffb15a; }
-  #camstat .clr { color: #90ff8c; } #camstat .clr.no { color: #ff6b6b; }
-  /* confirm-drop button + tap hint */
-  #confirm { position: absolute; left: 50%; transform: translateX(-50%); bottom: 22px; z-index: 1200; display: none;
-    background: #1f7a3d; color: #eaffef; border: 1px solid #7CFFB2; border-radius: 10px; padding: 12px 22px;
-    font-size: 15px; font-weight: 700; cursor: pointer; box-shadow: 0 6px 22px rgba(0,0,0,.5); animation: bob 1.2s ease-in-out infinite; }
-  #hint { position: absolute; left: 50%; transform: translateX(-50%); top: 12px; z-index: 1000;
-    background: rgba(14,18,26,.9); color: #cdd6e2; border: 1px solid #283142; border-radius: 8px;
-    padding: 6px 12px; font-size: 12px; }
-  #hint b { color: #6fd3ff; }
-  .maplabel { background: rgba(10,14,20,.85); border: 1px solid #2c3a52; border-radius: 6px;
-    color: #fff; font-size: 11px; font-weight: 600; padding: 2px 7px; white-space: nowrap; }
-  .maplabel.pk { border-color: #2f7; } .maplabel.dp { border-color: #f86; } .maplabel.dr { border-color: #6fd3ff; }
-  .leaflet-tooltip-top:before, .leaflet-tooltip-bottom:before, .leaflet-tooltip-right:before { display: none; }
-  .dot { width: 10px; height: 10px; border-radius: 50%; }
-  /* rain overlay */
+  .card { position: absolute; z-index: 1000; background: var(--panel); color: var(--text);
+    border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 10px 34px rgba(0,0,0,.45);
+    backdrop-filter: blur(14px) saturate(120%); -webkit-backdrop-filter: blur(14px) saturate(120%); }
+
+  /* brand header / hud */
+  #hud { top: 16px; left: 16px; width: 268px; padding: 16px 18px; }
+  .brand { display: flex; align-items: center; gap: 11px; margin-bottom: 14px; }
+  .logo { width: 26px; height: 26px; position: relative; transform: rotate(45deg); flex: 0 0 auto; }
+  .logo i { position: absolute; width: 11px; height: 11px; border: 2px solid var(--text); }
+  .logo i:first-child { inset: 0 auto auto 0; }
+  .logo i:nth-child(2) { inset: 0 0 auto auto; }
+  .logo i:last-child { inset: auto 0 0 auto; background: var(--teal); border-color: var(--teal); }
+  .wordmark { font-weight: 800; font-size: 17px; letter-spacing: -.01em; line-height: 1; }
+  .tag { font-size: 11px; color: var(--muted); margin-top: 3px; letter-spacing: .02em; }
+  #status { font-size: 15px; font-weight: 700; letter-spacing: -.01em; margin: 2px 0 13px; color: var(--green);
+    display: flex; align-items: center; gap: 8px; }
+  #status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor;
+    box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 22%, transparent); }
+  #status.pickup { color: var(--amber); } #status.idle { color: var(--muted); } #status.land { color: var(--orange); }
+  .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .metrics > div { background: rgba(255,255,255,.03); border: 1px solid var(--line); border-radius: 11px; padding: 9px 11px; }
+  .metrics .k { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--faint); margin-bottom: 3px; }
+  .metrics .v { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .job { margin-top: 13px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 12.5px; line-height: 1.6; }
+  .job .lbl { color: var(--muted); } .job .pk { color: var(--green); font-weight: 600; }
+  .job .dp { color: var(--orange); font-weight: 600; } .job .item { color: var(--text); font-weight: 600; }
+  .meta { margin-top: 12px; font-size: 11px; color: var(--muted); letter-spacing: .01em; }
+
+  /* weather */
+  #weather { top: 16px; right: 16px; width: 178px; padding: 14px 16px; }
+  .panel-title { font-size: 10.5px; margin: 0 0 11px; color: var(--faint); letter-spacing: .09em; text-transform: uppercase; font-weight: 700; }
+  #weather .wx { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  #windArrow { transition: transform .6s ease; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; margin: 6px 0; }
+  .row .k { color: var(--muted); } .row .v { font-weight: 600; font-variant-numeric: tabular-nums; }
+  #wind { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+  #gstop { display: none; margin-top: 11px; background: rgba(240,98,93,.14); border: 1px solid var(--coral);
+    color: #ffd2d0; border-radius: 9px; padding: 7px 9px; font-size: 11px; font-weight: 700; text-align: center; letter-spacing: .02em; }
+
+  /* onboard camera */
+  #cam { bottom: 16px; right: 16px; width: 264px; padding: 12px; }
+  #cam .panel-title { display: flex; justify-content: space-between; }
+  #camimg { width: 240px; height: 180px; display: block; border-radius: 10px; background: #05070a;
+    image-rendering: pixelated; border: 1px solid var(--line); }
+  #camstat { font-size: 11px; margin-top: 9px; display: flex; justify-content: space-between; align-items: center; }
+  #camstat .pill { padding: 3px 9px; border-radius: 999px; font-weight: 700; letter-spacing: .03em; font-size: 10.5px;
+    border: 1px solid var(--line); }
+  .lock { color: var(--green); background: rgba(70,212,147,.12); } .lock.no { color: var(--amber); background: rgba(242,184,75,.12); }
+  .clr { color: var(--green); background: rgba(70,212,147,.12); } .clr.no { color: var(--coral); background: rgba(240,98,93,.14); }
+
+  /* legend */
+  #legend { bottom: 16px; left: 16px; padding: 13px 16px; font-size: 12px; }
+  #legend .li { display: flex; align-items: center; gap: 9px; margin: 6px 0; color: #c6cedb; }
+  #legend .sw { width: 18px; display: inline-flex; justify-content: center; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; }
+  .pinmark { width: 12px; height: 12px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: inline-block; }
+
+  /* controls */
+  .btn { z-index: 1000; cursor: pointer; font-family: inherit; font-weight: 600; border-radius: 10px;
+    border: 1px solid var(--line); transition: border-color .15s, transform .1s; }
+  .btn:active { transform: translateY(1px); }
+  #btn { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--panel);
+    backdrop-filter: blur(12px); color: #d7e2f0; padding: 9px 15px; font-size: 12.5px; }
+  #btn:hover { border-color: var(--teal); }
+  #confirm { position: absolute; left: 50%; transform: translateX(-50%); bottom: 64px; z-index: 1200; display: none;
+    background: var(--green); color: #062018; border: none; padding: 13px 26px; font-size: 15px; font-weight: 800;
+    cursor: pointer; border-radius: 12px; box-shadow: 0 10px 30px rgba(70,212,147,.35); animation: pulse 1.6s ease-in-out infinite; }
+  #hint { position: absolute; left: 50%; transform: translateX(-50%); top: 16px; z-index: 1000; background: var(--panel);
+    backdrop-filter: blur(12px); border: 1px solid var(--line); border-radius: 10px; padding: 7px 14px; font-size: 12px; color: #c6cedb; }
+  #hint b { color: var(--teal); }
+
+  .maplabel { background: rgba(10,13,18,.9); border: 1px solid var(--line); border-radius: 7px; color: #fff;
+    font-size: 11px; font-weight: 600; padding: 3px 8px; white-space: nowrap; font-family: Inter, sans-serif;
+    box-shadow: 0 4px 14px rgba(0,0,0,.4); }
+  .maplabel.pk { border-color: rgba(70,212,147,.6); } .maplabel.dp { border-color: rgba(245,158,107,.6); }
+  .maplabel.dr { border-color: rgba(46,230,198,.6); }
+  .leaflet-tooltip-top:before, .leaflet-tooltip-bottom:before, .leaflet-tooltip-right:before, .leaflet-tooltip-left:before { display: none; }
+  .leaflet-container { background: var(--bg); font-family: Inter, sans-serif; }
+
+  /* effects */
   #rain { position: absolute; inset: 0; z-index: 900; pointer-events: none; overflow: hidden; opacity: 0; transition: opacity 1s; }
-  .drop { position: absolute; top: -10%; width: 1px; height: 56px; background: linear-gradient(transparent, rgba(160,190,230,.55));
-    animation: fall linear infinite; }
+  .drop { position: absolute; top: -10%; width: 1px; height: 56px; background: linear-gradient(transparent, rgba(170,195,230,.5)); animation: fall linear infinite; }
   @keyframes fall { to { transform: translateY(115vh); } }
-  /* person handover */
   @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
   .person svg { animation: bob .9s ease-in-out infinite; }
   @keyframes ring { 0% { transform: scale(.3); opacity: .9; } 100% { transform: scale(1.6); opacity: 0; } }
+  @keyframes pulse { 0%,100% { box-shadow: 0 10px 30px rgba(70,212,147,.35); } 50% { box-shadow: 0 10px 38px rgba(70,212,147,.6); } }
 </style>
 </head>
 <body>
 <div id="map"></div>
 <div id="rain"></div>
-<div id="btn" onclick="fitAll()">Show whole delivery</div>
+<div id="btn" class="btn" onclick="fitAll()">Frame delivery</div>
 <div id="hint"><b>Click the map</b> near the dropoff to set your exact drop point</div>
-<div id="confirm" onclick="confirmDrop()">&#10003; Confirm drop here</div>
+<div id="confirm" onclick="confirmDrop()">Confirm drop here</div>
 
 <div id="cam" class="card">
-  <h2><span>Onboard camera</span><span id="camalt">--m</span></h2>
-  <img id="camimg" alt="drone camera" />
-  <div id="camstat"><span id="camlock" class="lock no">SEARCHING PAD</span><span id="camclear" class="clr">zone clear</span></div>
+  <div class="panel-title"><span>Onboard camera</span><span id="camalt">—m</span></div>
+  <img id="camimg" alt="onboard drone camera" />
+  <div id="camstat"><span id="camlock" class="pill lock no">SEARCHING PAD</span><span id="camclear" class="pill clr">ZONE CLEAR</span></div>
 </div>
 
 <div id="hud" class="card">
-  <h1>Cambridge Delivery Drones</h1>
-  <div class="sub">live PX4 + Gazebo physics &middot; <span id="fleetn">--</span></div>
-  <div id="status">connecting&hellip;</div>
-  <div class="row"><span class="k">Ground speed</span><span class="v" id="spd">-- m/s</span></div>
-  <div class="row"><span class="k">Altitude</span><span class="v" id="alt">-- m</span></div>
-  <div class="job" id="job">waiting for a delivery&hellip;</div>
+  <div class="brand">
+    <span class="logo" aria-hidden="true"><i></i><i></i><i></i></span>
+    <div><div class="wordmark">Locust</div><div class="tag">Cambridge · Live operations</div></div>
+  </div>
+  <div id="status">Connecting…</div>
+  <div class="metrics">
+    <div><span class="k">Ground speed</span><span class="v" id="spd">— m/s</span></div>
+    <div><span class="k">Altitude</span><span class="v" id="alt">— m</span></div>
+  </div>
+  <div class="job" id="job">Waiting for a delivery…</div>
+  <div class="meta" id="fleetn">—</div>
 </div>
 
 <div id="weather" class="card">
-  <h2>Weather</h2>
+  <div class="panel-title">Conditions</div>
   <div class="wx">
-    <svg id="windArrow" width="34" height="34" viewBox="0 0 34 34"><polygon points="17,3 24,28 17,22 10,28" fill="#6fd3ff" stroke="#fff" stroke-width="1"/></svg>
-    <div><div class="v" id="wind">-- m/s</div><div class="k" style="font-size:11px">wind</div></div>
+    <svg id="windArrow" width="36" height="36" viewBox="0 0 36 36"><polygon points="18,4 25,30 18,23 11,30" fill="#2ee6c6"/></svg>
+    <div><div id="wind">— m/s</div><div class="k" style="font-size:11px;color:var(--muted)">wind</div></div>
   </div>
-  <div class="row"><span class="k">Temp</span><span class="v" id="temp">-- &deg;C</span></div>
-  <div class="row"><span class="k">Rain</span><span class="v" id="precip">--%</span></div>
-  <div id="gstop">&#9888; GROUND STOP &mdash; high wind</div>
+  <div class="row"><span class="k">Temperature</span><span class="v" id="temp">— °C</span></div>
+  <div class="row"><span class="k">Precipitation</span><span class="v" id="precip">—%</span></div>
+  <div id="gstop">⚠ GROUND STOP — HIGH WIND</div>
 </div>
 
 <div id="legend" class="card">
-  <div class="li"><span class="sw"><svg width="16" height="16" viewBox="0 0 16 16"><polygon points="8,1 13,15 8,11 3,15" fill="#6fd3ff" stroke="#fff" stroke-width="1"/></svg></span> Physics drone (the hero)</div>
-  <div class="li"><span class="sw"><span class="dot" style="background:#9fb0c8"></span></span> Other drones flying</div>
-  <div class="li"><span class="sw"><span class="dot" style="background:#2ee68a"></span></span> Drone at a handover</div>
-  <div class="li"><span class="sw"><span class="dot" style="background:#ff5a4d"></span></span> Drone with a fault</div>
-  <div class="li"><span class="sw"><span style="width:12px;height:12px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#2ee68a;display:inline-block"></span></span> Pickup &nbsp; / &nbsp; <span style="width:12px;height:12px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#ff8e72;display:inline-block;margin-left:4px"></span> Dropoff</div>
-  <div class="li"><span class="sw"><span style="width:12px;height:12px;border-radius:50%;background:#39d98a;display:inline-block"></span></span> Charging depot</div>
+  <div class="li"><span class="sw"><svg width="15" height="15" viewBox="0 0 16 16"><polygon points="8,1 13,15 8,11 3,15" fill="#2ee6c6"/></svg></span> Tracked delivery drone</div>
+  <div class="li"><span class="sw"><span class="dot" style="background:var(--steel)"></span></span> Fleet — in flight</div>
+  <div class="li"><span class="sw"><span class="dot" style="background:var(--green)"></span></span> Drone at a handover</div>
+  <div class="li"><span class="sw"><span class="dot" style="background:var(--coral)"></span></span> Drone with a fault</div>
+  <div class="li"><span class="sw"><span class="pinmark" style="background:var(--green)"></span></span> Pickup&nbsp; / &nbsp;<span class="pinmark" style="background:var(--orange);margin-left:5px"></span> Dropoff</div>
+  <div class="li"><span class="sw"><span class="dot" style="background:var(--green)"></span></span> Charging depot</div>
 </div>
 
 <script>
@@ -130,9 +180,9 @@ map.on('dragstart', () => { follow = false; });
 // customer taps a precise drop point
 map.on('click', async (e) => {
   const { lat, lng } = e.latlng;
-  if (!dropMarker) dropMarker = L.marker([lat, lng], { icon: L.divIcon({ className: '', iconSize: [22, 22], iconAnchor: [11, 20],
-    html: '<div style="font-size:20px;filter:drop-shadow(0 1px 2px #000)">📍</div>' }) }).addTo(map)
-    .bindTooltip('Your drop point', { permanent: true, direction: 'right', offset: [6, -4], className: 'maplabel' });
+  const html = '<svg width="22" height="28" viewBox="0 0 22 28"><path d="M11 27C11 27 20 16.5 20 10A9 9 0 1 0 2 10C2 16.5 11 27 11 27Z" fill="#2ee6c6" stroke="#fff" stroke-width="1.5"/><circle cx="11" cy="10" r="3.4" fill="#06231d"/></svg>';
+  if (!dropMarker) dropMarker = L.marker([lat, lng], { icon: L.divIcon({ className: '', iconSize: [22, 28], iconAnchor: [11, 27], html }) }).addTo(map)
+    .bindTooltip('Your drop point', { permanent: true, direction: 'right', offset: [8, -8], className: 'maplabel' });
   else dropMarker.setLatLng([lat, lng]);
   try { await fetch('/api/drop', { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ lat, lon: lng }) }); } catch (err) {}
@@ -144,12 +194,12 @@ async function confirmDrop() {
 
 function droneIcon(h) {
   return L.divIcon({ className: '', iconSize: [34, 34], iconAnchor: [17, 17],
-    html: `<svg width="34" height="34" viewBox="0 0 34 34" style="transform:rotate(${h||0}deg);filter:drop-shadow(0 0 6px rgba(111,211,255,.9))">
-      <polygon points="17,3 26,30 17,23 8,30" fill="#6fd3ff" stroke="#fff" stroke-width="1.4"/></svg>` });
+    html: `<svg width="34" height="34" viewBox="0 0 34 34" style="transform:rotate(${h||0}deg);filter:drop-shadow(0 0 7px rgba(46,230,198,.85))">
+      <polygon points="17,3 26,30 17,23 8,30" fill="#2ee6c6" stroke="#fff" stroke-width="1.4"/></svg>` });
 }
 function pinIcon(c) {
   return L.divIcon({ className: '', iconSize: [18, 18], iconAnchor: [9, 16],
-    html: `<div style="width:14px;height:14px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${c};border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.5)"></div>` });
+    html: `<div style="width:14px;height:14px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${c};border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.55)"></div>` });
 }
 function setPin(ref, pos, color, cls, text) {
   if (!ref) { ref = L.marker(pos, { icon: pinIcon(color) }).addTo(map);
@@ -189,9 +239,9 @@ function setRain(precip) {
 function personIcon() {
   return L.divIcon({ className: 'person', iconSize: [40, 40], iconAnchor: [-6, 30],
     html: `<svg width="34" height="40" viewBox="0 0 34 40">
-      <rect x="2" y="13" width="9" height="9" rx="2" fill="#ffd166" stroke="#7a5b12"/>            <!-- parcel -->
-      <circle cx="22" cy="9" r="5" fill="#ffd9b0"/>                                               <!-- head -->
-      <rect x="17" y="15" width="10" height="14" rx="4" fill="#3a7bd5"/>                           <!-- torso -->
+      <rect x="2" y="13" width="9" height="9" rx="2" fill="#f2b84b" stroke="#7a5b12"/>
+      <circle cx="22" cy="9" r="5" fill="#ffd9b0"/>
+      <rect x="17" y="15" width="10" height="14" rx="4" fill="#3a7bd5"/>
       <rect x="19" y="28" width="3" height="9" fill="#26324a"/><rect x="23" y="28" width="3" height="9" fill="#26324a"/>
     </svg>` });
 }
@@ -202,7 +252,7 @@ function showPerson(pos, kind) {
   personMarker.setTooltipContent(kind === 'pickup' ? 'Shop loading the parcel' : 'Customer collecting');
   if (!ringMarker) ringMarker = L.marker(pos, { interactive: false, zIndexOffset: 1100, icon: L.divIcon({
     className: '', iconSize: [60, 60], iconAnchor: [30, 30],
-    html: `<div style="width:60px;height:60px;border-radius:50%;border:3px solid #7CFFB2;animation:ring 1.4s ease-out infinite"></div>` }) }).addTo(map);
+    html: `<div style="width:60px;height:60px;border-radius:50%;border:3px solid #46d493;animation:ring 1.4s ease-out infinite"></div>` }) }).addTo(map);
   ringMarker.setLatLng(pos);
 }
 function hidePerson() {
@@ -217,14 +267,14 @@ async function tick() {
     if (r.ok) { const d = await r.json(); geo = d.geo; weather = d.weather; fleet = d.drones || [];
       if (geo && !depotsDrawn && (d.depots || []).length) {
         d.depots.forEach((dep, i) => L.circleMarker(toLatLon(dep.x, dep.y, geo),
-          { radius: 6, color: '#39d98a', fillColor: '#39d98a', fillOpacity: .85, weight: 1 })
+          { radius: 6, color: '#46d493', fillColor: '#46d493', fillOpacity: .85, weight: 1 })
           .addTo(depotLayer).bindTooltip(i === 0 ? 'Charging depot (base)' : 'Charging depot', { direction: 'top', className: 'maplabel' }));
         depotsDrawn = true;
       }
     }
   } catch (e) {}
 
-  // weather panel + rain + ground stop
+  // conditions panel + rain + ground stop
   if (weather) {
     document.getElementById('wind').textContent = (weather.wind_mps || 0).toFixed(1) + ' m/s';
     document.getElementById('temp').textContent = (weather.temp_c || 0).toFixed(0) + ' °C';
@@ -234,21 +284,21 @@ async function tick() {
     setRain(weather.precip || 0);
   }
 
-  // fleet of other drones as status-coloured dots (no labels -- legend explains)
+  // fleet as status-coloured dots (legend explains)
   fleetLayer.clearLayers();
   let flying = 0, down = 0;
   if (geo) fleet.forEach((x) => {
     const st = x.status || 'ok';
     if (st === 'down') down++; else flying++;
-    const col = st === 'down' ? '#ff5a4d' : st === 'servicing' ? '#2ee68a' : '#9fb0c8';
+    const col = st === 'down' ? '#f0625d' : st === 'servicing' ? '#46d493' : '#9fb0c8';
     const m = L.circleMarker(toLatLon(x.x, x.y, geo), { radius: st === 'down' ? 6 : 4, color: col,
       fillColor: col, fillOpacity: .85, weight: st === 'down' ? 2 : 0 }).addTo(fleetLayer);
     if (x.fault) m.bindTooltip('⚠ ' + x.fault, { direction: 'top', className: 'maplabel' });
   });
-  document.getElementById('fleetn').textContent = fleet.length + ' drones'
+  document.getElementById('fleetn').textContent = fleet.length + ' aircraft active'
     + (down ? ' · ' + down + ' grounded' : '');
 
-  // the hero physical drone
+  // the tracked drone
   let fresh = false;
   try {
     const tr = await fetch('data/twin.json?t=' + Date.now(), { cache: 'no-store' });
@@ -256,20 +306,19 @@ async function tick() {
       if (typeof t.lat === 'number') { fresh = true;
         const pos = [t.lat, t.lon]; const r = t.route || {};
         if (!twinMarker) { twinMarker = L.marker(pos, { icon: droneIcon(t.heading), zIndexOffset: 1000 }).addTo(map);
-          twinMarker.bindTooltip('DRONE', { permanent: true, direction: 'right', offset: [12, 0], className: 'maplabel dr' }); }
+          twinMarker.bindTooltip('LX-01', { permanent: true, direction: 'right', offset: [12, 0], className: 'maplabel dr' }); }
         else { twinMarker.setLatLng(pos); twinMarker.setIcon(droneIcon(t.heading)); }
         if (t.trail && t.trail.length > 1) {
-          if (!trailLine) trailLine = L.polyline(t.trail, { color: '#6fd3ff', weight: 3, opacity: .9 }).addTo(map);
+          if (!trailLine) trailLine = L.polyline(t.trail, { color: '#2ee6c6', weight: 3, opacity: .9 }).addTo(map);
           else trailLine.setLatLngs(t.trail);
         }
-        if (r.pickup_ll) pickPin = setPin(pickPin, r.pickup_ll, '#2ee68a', 'pk', 'PICKUP · ' + r.pickup);
-        if (r.dropoff_ll) dropPin = setPin(dropPin, r.dropoff_ll, '#ff8e72', 'dp', 'DROPOFF · ' + r.dropoff);
+        if (r.pickup_ll) pickPin = setPin(pickPin, r.pickup_ll, '#46d493', 'pk', 'PICKUP · ' + r.pickup);
+        if (r.dropoff_ll) dropPin = setPin(dropPin, r.dropoff_ll, '#f59e6b', 'dp', 'DROPOFF · ' + r.dropoff);
         const dest = r.phase === 'to pickup' ? r.pickup_ll : r.dropoff_ll;
         if (dest) { const seg = [pos, dest];
-          if (!planLine) planLine = L.polyline(seg, { color: '#ffd166', weight: 2, dashArray: '6 7', opacity: .8 }).addTo(map);
+          if (!planLine) planLine = L.polyline(seg, { color: '#f2b84b', weight: 2, dashArray: '6 7', opacity: .85 }).addTo(map);
           else planLine.setLatLngs(seg); }
 
-        // landing + person handover
         if (t.handover) showPerson(pos, t.state === 'handover_pickup' ? 'pickup' : 'dropoff');
         else hidePerson();
 
@@ -279,36 +328,35 @@ async function tick() {
         // onboard camera panel + vision status
         const vz = t.vision || {};
         document.getElementById('camimg').src = 'data/dronecam.png?t=' + Math.floor(Date.now() / 400);
-        document.getElementById('camalt').textContent = (t.alt != null ? t.alt.toFixed(0) : '--') + 'm';
+        document.getElementById('camalt').textContent = (t.alt != null ? t.alt.toFixed(0) : '—') + 'm';
         const cl = document.getElementById('camlock');
-        cl.textContent = vz.found ? 'PAD LOCKED' : 'SEARCHING PAD'; cl.className = 'lock' + (vz.found ? '' : ' no');
+        cl.textContent = vz.found ? 'PAD LOCKED' : 'SEARCHING PAD'; cl.className = 'pill lock' + (vz.found ? '' : ' no');
         const cc = document.getElementById('camclear');
-        cc.textContent = vz.clear === false ? 'OBSTRUCTED' : 'zone clear'; cc.className = 'clr' + (vz.clear === false ? ' no' : '');
+        cc.textContent = vz.clear === false ? 'OBSTRUCTED' : 'ZONE CLEAR'; cc.className = 'pill clr' + (vz.clear === false ? ' no' : '');
 
-        // confirm-on-arrival button
         document.getElementById('confirm').style.display = t.await_confirm ? 'block' : 'none';
 
-        // HUD plain-language status
+        // plain-language status
         const st = document.getElementById('status'); const s = t.state || 'cruise';
-        const M = { descending: ['Descending to deliver', 'land'], climbing: ['Climbing back to cruise', 'land'],
-          servoing: ['Locking onto landing pad (camera)', 'land'], awaiting_confirm: ['Awaiting your confirmation', 'pickup'],
-          handover_pickup: ['Shop loading the parcel', 'land'], handover_dropoff: ['Customer collecting parcel', 'land'] };
+        const M = { descending: ['Descending to deliver', 'land'], climbing: ['Climbing to cruise', 'land'],
+          servoing: ['Locking onto landing pad', 'land'], awaiting_confirm: ['Awaiting your confirmation', 'pickup'],
+          handover_pickup: ['Collecting the parcel', 'land'], handover_dropoff: ['Customer collecting', 'land'] };
         if (M[s]) { st.textContent = M[s][0]; st.className = M[s][1]; }
-        else if (r.phase === 'to pickup') { st.textContent = 'Flying to collect the parcel'; st.className = 'pickup'; }
-        else if (r.phase === 'to dropoff') { st.textContent = 'Delivering to the customer'; st.className = ''; }
+        else if (r.phase === 'to pickup') { st.textContent = 'En route to collect'; st.className = 'pickup'; }
+        else if (r.phase === 'to dropoff') { st.textContent = 'Delivering to customer'; st.className = ''; }
         else { st.textContent = t.armed ? 'In flight' : 'Idle'; st.className = 'idle'; }
-        document.getElementById('spd').textContent = (t.speed != null ? t.speed.toFixed(1) : '--') + ' m/s';
-        document.getElementById('alt').textContent = (t.alt != null ? t.alt.toFixed(0) : '--') + ' m';
+        document.getElementById('spd').textContent = (t.speed != null ? t.speed.toFixed(1) : '—') + ' m/s';
+        document.getElementById('alt').textContent = (t.alt != null ? t.alt.toFixed(0) : '—') + ' m';
         document.getElementById('job').innerHTML = r.id
-          ? `<div><span class="lbl">Carrying:</span> <span class="item">${r.item || '--'}</span></div>
-             <div style="margin-top:4px"><span class="lbl">From</span> <span class="pk">${r.pickup || '?'}</span></div>
-             <div><span class="lbl">To</span> <span class="dp">${r.dropoff || '?'}</span></div>`
-          : 'waiting for a delivery…';
+          ? `<div><span class="lbl">Carrying</span> &nbsp;<span class="item">${r.item || '—'}</span></div>
+             <div style="margin-top:5px"><span class="lbl">From</span> <span class="pk">${r.pickup || '—'}</span></div>
+             <div><span class="lbl">To</span> <span class="dp">${r.dropoff || '—'}</span></div>`
+          : 'Waiting for a delivery…';
         if (r.id && r.id !== lastRouteId) { lastRouteId = r.id; didInitialFit = false; }
       }
     }
   } catch (e) {}
-  if (!fresh) { const st = document.getElementById('status'); st.textContent = 'no telemetry (bridge offline)'; st.className = 'idle'; }
+  if (!fresh) { const st = document.getElementById('status'); st.textContent = 'Awaiting telemetry'; st.className = 'idle'; }
 }
 setInterval(tick, 500);
 tick();
