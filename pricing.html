@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Inspect Locust's transparent weight-sensitive delivery pricing hypothesis and commercial service pricing." />
+  <meta name="theme-color" content="#071412" />
+  <title>Pricing | Locust</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="company-site subpage">
+  <header class="site-nav">
+    <a class="site-brand" href="index.html" aria-label="Locust home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span><b>Locust</b></span></a>
+    <nav aria-label="Primary navigation"><a href="index.html#solution">Solution</a><a href="mission.html">Why Locust</a><a class="active" href="pricing.html">Pricing</a><a href="evidence.html">Evidence</a><a href="investors.html">Investors</a><a href="careers.html">Careers</a><a href="contact.html">Contact</a></nav>
+    <a class="button button-small button-dark" href="contact.html?topic=pilot">Scope a programme</a>
+  </header>
+
+  <main>
+    <section class="page-hero pricing-hero">
+      <div>
+        <div class="eyebrow"><span></span> Transparent commercial model</div>
+        <h1>Price the capacity an order actually uses.</h1>
+        <p>A normal meal or small parcel should remain legible. Heavy liquid baskets, long routes and orders requiring multiple aircraft should pay for the capacity and handling they consume.</p>
+      </div>
+      <aside class="hero-thesis">
+        <span>Current hypothesis</span>
+        <strong>Base + distance + excess mass + liquid handling + extra aircraft + small basket.</strong>
+        <p>The coefficients below are simulation inputs for customer research, not a live consumer tariff.</p>
+      </aside>
+    </section>
+
+    <section class="pricing-calculator-section">
+      <div class="calculator-copy">
+        <div class="section-kicker">Quote laboratory</div>
+        <h2>Change the basket.<br />See every component.</h2>
+        <p>The calculator assumes a 1.8 kg usable payload per light-delivery aircraft. Orders above that mass may require several aircraft and quickly become better suited to a cargo bike, van or collection point.</p>
+        <div class="pricing-benchmarks">
+          <span>Public context</span>
+          <p>Deliveroo’s reported UKI basket context and published customer fees help bound research, but neither establishes what Cambridge customers will pay for drone delivery.<a class="source-ref" href="evidence.html#src-deliveroo" aria-label="Source 7">7</a></p>
+        </div>
+      </div>
+
+      <form class="quote-lab" id="quote-lab">
+        <div class="quote-inputs">
+          <label><span>Delivery distance</span><strong><output id="distance-output">2.0</output> km</strong><input id="quote-distance" type="range" min="0.5" max="10" step="0.1" value="2" /></label>
+          <label><span>Total order mass</span><strong><output id="weight-output">0.75</output> kg</strong><input id="quote-weight" type="range" min="0.1" max="8" step="0.05" value="0.75" /></label>
+          <label><span>Liquid within order</span><strong><output id="liquid-output">0.20</output> kg</strong><input id="quote-liquid" type="range" min="0" max="4" step="0.05" value="0.2" /></label>
+          <label><span>Basket value</span><strong>£<output id="basket-output">15.00</output></strong><input id="quote-basket" type="range" min="1" max="60" step="0.5" value="15" /></label>
+        </div>
+
+        <div class="quote-result">
+          <div class="quote-total"><span>Illustrative delivery quote</span><strong id="quote-total">£4.97</strong><small id="quote-aircraft">1 aircraft · suitable for light RPAS screening</small></div>
+          <div class="quote-breakdown">
+            <div><span>Base</span><b id="quote-base">£2.50</b></div>
+            <div><span>Distance</span><b id="quote-distance-fee">£2.40</b></div>
+            <div><span>Excess mass</span><b id="quote-weight-fee">£0.00</b></div>
+            <div><span>Liquid handling</span><b id="quote-liquid-fee">£0.07</b></div>
+            <div><span>Additional aircraft</span><b id="quote-aircraft-fee">£0.00</b></div>
+            <div><span>Small basket</span><b id="quote-small-fee">£0.00</b></div>
+          </div>
+          <p class="quote-guidance" id="quote-guidance">This order fits the intended light-delivery envelope.</p>
+        </div>
+      </form>
+    </section>
+
+    <section class="section outcome-section">
+      <div class="section-kicker">Tariff sensitivity outcome</div>
+      <div class="split-heading"><h2>High margin per delivery can still be a bad price.</h2><p>The useful measure is contribution per attempted order, because it captures both accepted-order economics and demand destroyed by price.</p></div>
+      <div class="outcome-grid">
+        <article><span>Modeled access tariff</span><h3>67.7% accepted</h3><p>Mean accepted quote £4.58 and £1.10 modeled contribution per attempted order.</p><ul><li>Highest synthetic conversion</li><li>Lower contribution per accepted order</li><li>Candidate accessibility benchmark</li></ul></article>
+        <article><span>Modeled balanced tariff</span><h3>£1.32 per attempt</h3><p>30.7% accepted with a £6.96 mean accepted quote. It produced the strongest modeled contribution per attempt.</p><ul><li>Current simulation optimum</li><li>Not validated willingness to pay</li><li>Starting point for customer research</li></ul></article>
+        <article><span>Modeled capacity tariff</span><h3>22.0% accepted</h3><p>Mean accepted quote £7.66 and £1.13 modeled contribution per attempted order.</p><ul><li>Protects scarce aircraft capacity</li><li>Suppresses too much synthetic demand</li><li>Useful only under constrained supply</li></ul></article>
+      </div>
+      <p class="model-note">Source: Locust 270-case headless sweep, 6 June 2026. Willingness to pay and basket mix are synthetic.<a class="source-ref" href="evidence.html#src-model" aria-label="Source 12">12</a></p>
+    </section>
+
+    <section class="section service-pricing">
+      <div class="section-kicker">Business and public-sector services</div>
+      <div class="split-heading"><h2>Buy evidence before hardware.</h2><p>Begin with the smallest engagement that can answer the decision. Aircraft and infrastructure are quoted only after the route and economics pass a gate.</p></div>
+      <div class="service-price-grid">
+        <article><span>Qualification</span><h3>Mission sprint</h3><strong>£12k–£25k</strong><p>Route screen, approval path, preliminary economics and proceed/redesign/stop recommendation.</p></article>
+        <article><span>Simulation</span><h3>Focused setup</h3><strong>£35k–£75k</strong><p>Digital twin, aircraft comparison and route, risk, payload and energy scenarios.</p></article>
+        <article><span>Programme</span><h3>Multi-route design</h3><strong>£90k–£180k</strong><p>Calibrated model, assurance plan, infrastructure design and investment case.</p></article>
+        <article><span>Aircraft</span><h3>Drone setup</h3><strong>£150k–£350k</strong><p>Integration, payload, C2, HIL, procedures and evidence. Aircraft excluded.</p></article>
+        <article><span>Infrastructure</span><h3>Starter hub</h3><strong>£120k–£300k</strong><p>Site, charging, storage, connectivity and control integration. Major works excluded.</p></article>
+        <article><span>Recurring</span><h3>Monitoring service</h3><strong>£1k–£2.5k</strong><p>Per aircraft/month for scenario re-runs, monitoring, evidence updates and optimization.</p></article>
+      </div>
+    </section>
+
+    <section class="pricing-rules">
+      <div><div class="section-kicker light-kicker">Commercial rules</div><h2>Clear scope. Explicit pass-throughs. Measured outcomes.</h2></div>
+      <div class="evidence-stack">
+        <article><span>Payments</span><strong>40 / 30 / 20 / 10 milestones</strong><p>Mobilisation, design gate, integration gate and acceptance.</p></article>
+        <article><span>Hardware</span><strong>Cost plus 12–18%</strong><p>Integration, procurement and warranty handling are visible rather than hidden.</p></article>
+        <article><span>Change</span><strong>Route, payload and approval changes are controlled</strong><p>Material changes are re-scoped because they alter evidence and operating risk.</p></article>
+      </div>
+    </section>
+
+    <section class="page-cta"><span>Customer decision</span><h2>Bring a route and its current cost. We will test the alternative.</h2><a class="button button-primary" href="contact.html?topic=pilot">Request a qualification sprint <span>↗</span></a></section>
+  </main>
+
+  <footer class="site-footer"><a class="site-brand footer-brand" href="index.html"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span><b>Locust</b></span></a><p>Simulation-led civil aerospace technology.<br />Cambridge, United Kingdom.</p><div><a href="index.html">Company</a><a href="mission.html">Why Locust</a><a href="pricing.html">Pricing</a><a href="evidence.html">Evidence</a><a href="investors.html">Investors</a><a href="careers.html">Careers</a><a href="ops.html">Operations model</a><a href="contact.html">Contact</a></div><small>© <span id="year"></span> Locust. Prices are indicative, exclude VAT and remain subject to scope and validation.</small></footer>
+  <script src="site.js"></script>
+</body>
+</html>

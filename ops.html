@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Operations Model | Locust</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/uplot@1.6.31/dist/uPlot.min.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">◭</span>
+      <div>
+        <h1>Locust</h1>
+        <p class="sub">live delivery control · <span id="model">—</span></p>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <nav class="ops-links" aria-label="Operations links">
+        <a href="index.html">Company</a>
+        <a href="evidence.html#src-model">Model evidence</a>
+      </nav>
+      <div class="status">
+        <span id="conn" class="dot offline"></span>
+        <span id="conn-label">connecting…</span>
+        <span class="weatherpill" id="weather">clear</span>
+        <span class="clock" id="simclock">00:00</span>
+        <span class="speedpill" id="speed">1.0×</span>
+      </div>
+    </div>
+  </header>
+
+  <section class="stats" id="stats"></section>
+
+  <main class="grid">
+    <section class="panel feed">
+      <div class="panel-head"><h2>Delivery requests</h2><span class="count" id="req-count">0</span></div>
+      <div class="req-list" id="requests"></div>
+    </section>
+
+    <section class="panel map-panel">
+      <div class="panel-head">
+        <h2>Live airspace</h2>
+        <span class="legend"><i class="lg drone"></i>drone <i class="lg traj"></i>flight path <i class="lg depot"></i>depot <i class="lg pickup"></i>pickup <i class="lg nofly"></i>no-fly</span>
+        <button id="plot-btn" class="ghost-btn">📊 Analytics</button>
+      </div>
+      <div class="map-wrap"><div id="map"></div></div>
+    </section>
+
+    <section class="panel fleet">
+      <div class="panel-head"><h2>Fleet</h2><span class="count" id="fleet-count">0</span></div>
+      <div class="fleet-list" id="fleet"></div>
+    </section>
+  </main>
+
+  <section class="operations panel" id="operations">
+    <div class="panel-head">
+      <h2>Operations, people &amp; communications</h2>
+      <span class="ops-state" id="ops-status">CONNECTING</span>
+    </div>
+    <div class="ops-body">
+      <div class="ops-main">
+        <div class="ops-cards" id="ops-cards"></div>
+        <div class="recovery-board">
+          <div class="recovery-head"><b>Recovery &amp; maintenance jobs</b><span id="recovery-count">0 active</span></div>
+          <div class="recovery-list" id="recovery-jobs"></div>
+        </div>
+      </div>
+      <div class="activity">
+        <div class="activity-head"><b>Live audit stream</b><span>events detected while this console is open</span></div>
+        <ol id="activity-feed"></ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- Inspector drawer: full detail on whatever you click (drone or order) -->
+  <aside class="inspector" id="inspector" hidden>
+    <div class="insp-head">
+      <h2 id="insp-title">Inspector</h2>
+      <button id="insp-close" class="ghost-btn">✕</button>
+    </div>
+    <div class="insp-body" id="insp-body"></div>
+  </aside>
+
+  <section class="plots-bar" id="plots" hidden>
+    <div class="plots-head"><h2>📊 Analytics · live time-series</h2><button id="plot-close" class="ghost-btn">← Back to ops console</button></div>
+    <div class="plots-grid">
+      <div class="plot-card"><span class="plot-t">Profit / delivery £ · proj vs live</span><div class="uchart" id="uc-profit"></div></div>
+      <div class="plot-card"><span class="plot-t">Throughput · /hr</span><div class="uchart" id="uc-throughput"></div></div>
+      <div class="plot-card"><span class="plot-t">On-time %</span><div class="uchart" id="uc-ontime"></div></div>
+      <div class="plot-card"><span class="plot-t">Energy / delivery · Wh</span><div class="uchart" id="uc-energy"></div></div>
+      <div class="plot-card"><span class="plot-t">Market · adoption &amp; trust</span><div class="uchart" id="uc-market"></div></div>
+      <div class="plot-card"><span class="plot-t">Demand × &amp; open queue</span><div class="uchart" id="uc-demand"></div></div>
+      <div class="plot-card"><span class="plot-t">Maintenance &amp; recovery workload</span><div class="uchart" id="uc-workforce"></div></div>
+      <div class="plot-card"><span class="plot-t">Comms loss &amp; cumulative complaints</span><div class="uchart" id="uc-comms"></div></div>
+    </div>
+    <div class="cost-wrap" id="cost-wrap"></div>
+  </section>
+
+  <footer class="foot">Simulation console, not an operational flight system · Reads <code>web/data/state.json</code> written by the simulator · <a href="evidence.html#src-model">assumptions and limitations</a> · OpenStreetMap base map</footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/proj4@2.11.0/dist/proj4.js"></script>
+  <script src="https://unpkg.com/uplot@1.6.31/dist/uPlot.iife.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

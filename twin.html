@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cambridge Delivery Drones -- Live</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/proj4@2.11.0/dist/proj4.js"></script>
+<style>
+  html, body { margin: 0; height: 100%; background: #0b0e13; font-family: -apple-system, Segoe UI, Roboto, sans-serif; overflow: hidden; }
+  #map { position: absolute; inset: 0; }
+  .card { position: absolute; z-index: 1000; background: rgba(14,18,26,.93); color: #e8edf4;
+    border: 1px solid #283142; border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.5); }
+  #hud { top: 12px; left: 12px; width: 260px; padding: 14px 16px; }
+  #hud h1 { font-size: 13px; margin: 0 0 2px; letter-spacing: .04em; color: #6fd3ff; text-transform: uppercase; }
+  #hud .sub { font-size: 11px; color: #8b97a8; margin-bottom: 10px; }
+  #status { font-size: 16px; font-weight: 700; margin: 6px 0 10px; color: #7CFFB2; }
+  #status.pickup { color: #ffd166; } #status.idle { color: #8b97a8; } #status.land { color: #ff8e72; }
+  .row { display: flex; justify-content: space-between; gap: 14px; font-size: 13px; margin: 4px 0; }
+  .k { color: #8b97a8; } .v { color: #fff; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .job { margin-top: 10px; padding-top: 10px; border-top: 1px solid #283142; font-size: 12px; line-height: 1.5; }
+  .job .lbl { color: #8b97a8; } .job .pk { color: #7CFFB2; font-weight: 600; } .job .dp { color: #ff8e72; font-weight: 600; }
+  .job .item { color: #fff; font-weight: 600; }
+  #weather { top: 12px; right: 12px; width: 168px; padding: 12px 14px; }
+  #weather h2 { font-size: 11px; margin: 0 0 8px; color: #8b97a8; letter-spacing: .06em; text-transform: uppercase; }
+  #weather .wx { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  #windArrow { transition: transform .5s; }
+  #gstop { display: none; margin-top: 8px; background: #5a1f1f; border: 1px solid #ff6b6b; color: #ffd2d2;
+    border-radius: 7px; padding: 5px 8px; font-size: 11px; font-weight: 700; text-align: center; }
+  #legend { bottom: 12px; left: 12px; padding: 10px 14px; font-size: 12px; }
+  #legend .li { display: flex; align-items: center; gap: 8px; margin: 4px 0; color: #cdd6e2; }
+  #legend .sw { width: 16px; display: inline-flex; justify-content: center; }
+  #btn { position: absolute; bottom: 12px; right: 12px; z-index: 1000; cursor: pointer;
+    background: #1b2433; color: #cfe6ff; border: 1px solid #2c3a52; border-radius: 8px; padding: 8px 12px; font-size: 12px; }
+  /* onboard drone-cam panel */
+  #cam { bottom: 52px; right: 12px; width: 256px; padding: 8px; }
+  #cam h2 { font-size: 11px; margin: 0 0 6px; color: #8b97a8; letter-spacing: .06em; text-transform: uppercase; display: flex; justify-content: space-between; }
+  #camimg { width: 240px; height: 180px; display: block; border-radius: 6px; background: #05070a; image-rendering: pixelated; }
+  #camstat { font-size: 11px; margin-top: 5px; color: #8b97a8; display: flex; justify-content: space-between; }
+  #camstat .lock { color: #90ff8c; font-weight: 700; } #camstat .lock.no { color: #ffb15a; }
+  #camstat .clr { color: #90ff8c; } #camstat .clr.no { color: #ff6b6b; }
+  /* confirm-drop button + tap hint */
+  #confirm { position: absolute; left: 50%; transform: translateX(-50%); bottom: 22px; z-index: 1200; display: none;
+    background: #1f7a3d; color: #eaffef; border: 1px solid #7CFFB2; border-radius: 10px; padding: 12px 22px;
+    font-size: 15px; font-weight: 700; cursor: pointer; box-shadow: 0 6px 22px rgba(0,0,0,.5); animation: bob 1.2s ease-in-out infinite; }
+  #hint { position: absolute; left: 50%; transform: translateX(-50%); top: 12px; z-index: 1000;
+    background: rgba(14,18,26,.9); color: #cdd6e2; border: 1px solid #283142; border-radius: 8px;
+    padding: 6px 12px; font-size: 12px; }
+  #hint b { color: #6fd3ff; }
+  .maplabel { background: rgba(10,14,20,.85); border: 1px solid #2c3a52; border-radius: 6px;
+    color: #fff; font-size: 11px; font-weight: 600; padding: 2px 7px; white-space: nowrap; }
+  .maplabel.pk { border-color: #2f7; } .maplabel.dp { border-color: #f86; } .maplabel.dr { border-color: #6fd3ff; }
+  .leaflet-tooltip-top:before, .leaflet-tooltip-bottom:before, .leaflet-tooltip-right:before { display: none; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  /* rain overlay */
+  #rain { position: absolute; inset: 0; z-index: 900; pointer-events: none; overflow: hidden; opacity: 0; transition: opacity 1s; }
+  .drop { position: absolute; top: -10%; width: 1px; height: 56px; background: linear-gradient(transparent, rgba(160,190,230,.55));
+    animation: fall linear infinite; }
+  @keyframes fall { to { transform: translateY(115vh); } }
+  /* person handover */
+  @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+  .person svg { animation: bob .9s ease-in-out infinite; }
+  @keyframes ring { 0% { transform: scale(.3); opacity: .9; } 100% { transform: scale(1.6); opacity: 0; } }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="rain"></div>
+<div id="btn" onclick="fitAll()">Show whole delivery</div>
+<div id="hint"><b>Click the map</b> near the dropoff to set your exact drop point</div>
+<div id="confirm" onclick="confirmDrop()">&#10003; Confirm drop here</div>
+
+<div id="cam" class="card">
+  <h2><span>Onboard camera</span><span id="camalt">--m</span></h2>
+  <img id="camimg" alt="drone camera" />
+  <div id="camstat"><span id="camlock" class="lock no">SEARCHING PAD</span><span id="camclear" class="clr">zone clear</span></div>
+</div>
+
+<div id="hud" class="card">
+  <h1>Cambridge Delivery Drones</h1>
+  <div class="sub">live PX4 + Gazebo physics &middot; <span id="fleetn">--</span></div>
+  <div id="status">connecting&hellip;</div>
+  <div class="row"><span class="k">Ground speed</span><span class="v" id="spd">-- m/s</span></div>
+  <div class="row"><span class="k">Altitude</span><span class="v" id="alt">-- m</span></div>
+  <div class="job" id="job">waiting for a delivery&hellip;</div>
+</div>
+
+<div id="weather" class="card">
+  <h2>Weather</h2>
+  <div class="wx">
+    <svg id="windArrow" width="34" height="34" viewBox="0 0 34 34"><polygon points="17,3 24,28 17,22 10,28" fill="#6fd3ff" stroke="#fff" stroke-width="1"/></svg>
+    <div><div class="v" id="wind">-- m/s</div><div class="k" style="font-size:11px">wind</div></div>
+  </div>
+  <div class="row"><span class="k">Temp</span><span class="v" id="temp">-- &deg;C</span></div>
+  <div class="row"><span class="k">Rain</span><span class="v" id="precip">--%</span></div>
+  <div id="gstop">&#9888; GROUND STOP &mdash; high wind</div>
+</div>
+
+<div id="legend" class="card">
+  <div class="li"><span class="sw"><svg width="16" height="16" viewBox="0 0 16 16"><polygon points="8,1 13,15 8,11 3,15" fill="#6fd3ff" stroke="#fff" stroke-width="1"/></svg></span> Physics drone (the hero)</div>
+  <div class="li"><span class="sw"><span class="dot" style="background:#9fb0c8"></span></span> Other drones flying</div>
+  <div class="li"><span class="sw"><span class="dot" style="background:#2ee68a"></span></span> Drone at a handover</div>
+  <div class="li"><span class="sw"><span class="dot" style="background:#ff5a4d"></span></span> Drone with a fault</div>
+  <div class="li"><span class="sw"><span style="width:12px;height:12px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#2ee68a;display:inline-block"></span></span> Pickup &nbsp; / &nbsp; <span style="width:12px;height:12px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#ff8e72;display:inline-block;margin-left:4px"></span> Dropoff</div>
+  <div class="li"><span class="sw"><span style="width:12px;height:12px;border-radius:50%;background:#39d98a;display:inline-block"></span></span> Charging depot</div>
+</div>
+
+<script>
+'use strict';
+proj4.defs('UTM31', '+proj=utm +zone=31 +ellps=WGS84 +datum=WGS84 +units=m +no_defs');
+function toLatLon(x, y, geo) {
+  if (!geo) return null;
+  const e = (x + geo.map_origin[0]) - geo.net_offset[0], n = (y + geo.map_origin[1]) - geo.net_offset[1];
+  const ll = proj4('UTM31', 'WGS84', [e, n]);
+  return [ll[1], ll[0]];
+}
+
+const map = L.map('map', { zoomControl: true, attributionControl: false }).setView([52.15, 0.04], 14);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 19 }).addTo(map);
+
+const depotLayer = L.layerGroup().addTo(map), fleetLayer = L.layerGroup().addTo(map);
+let depotsDrawn = false;
+let twinMarker = null, trailLine = null, planLine = null, pickPin = null, dropPin = null;
+let personMarker = null, ringMarker = null;
+let follow = true, lastRouteId = null, didInitialFit = false;
+let dropMarker = null;
+map.on('dragstart', () => { follow = false; });
+
+// customer taps a precise drop point
+map.on('click', async (e) => {
+  const { lat, lng } = e.latlng;
+  if (!dropMarker) dropMarker = L.marker([lat, lng], { icon: L.divIcon({ className: '', iconSize: [22, 22], iconAnchor: [11, 20],
+    html: '<div style="font-size:20px;filter:drop-shadow(0 1px 2px #000)">📍</div>' }) }).addTo(map)
+    .bindTooltip('Your drop point', { permanent: true, direction: 'right', offset: [6, -4], className: 'maplabel' });
+  else dropMarker.setLatLng([lat, lng]);
+  try { await fetch('/api/drop', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lat, lon: lng }) }); } catch (err) {}
+});
+async function confirmDrop() {
+  try { await fetch('/api/confirm', { method: 'POST' }); } catch (e) {}
+  document.getElementById('confirm').style.display = 'none';
+}
+
+function droneIcon(h) {
+  return L.divIcon({ className: '', iconSize: [34, 34], iconAnchor: [17, 17],
+    html: `<svg width="34" height="34" viewBox="0 0 34 34" style="transform:rotate(${h||0}deg);filter:drop-shadow(0 0 6px rgba(111,211,255,.9))">
+      <polygon points="17,3 26,30 17,23 8,30" fill="#6fd3ff" stroke="#fff" stroke-width="1.4"/></svg>` });
+}
+function pinIcon(c) {
+  return L.divIcon({ className: '', iconSize: [18, 18], iconAnchor: [9, 16],
+    html: `<div style="width:14px;height:14px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${c};border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.5)"></div>` });
+}
+function setPin(ref, pos, color, cls, text) {
+  if (!ref) { ref = L.marker(pos, { icon: pinIcon(color) }).addTo(map);
+    ref.bindTooltip(text, { permanent: true, direction: 'right', offset: [8, -6], className: 'maplabel ' + cls }); }
+  else { ref.setLatLng(pos); ref.setTooltipContent(text); }
+  return ref;
+}
+function fitAll() {
+  const pts = [];
+  if (twinMarker) pts.push(twinMarker.getLatLng());
+  if (pickPin) pts.push(pickPin.getLatLng());
+  if (dropPin) pts.push(dropPin.getLatLng());
+  if (pts.length) { map.fitBounds(L.latLngBounds(pts).pad(0.35)); follow = false; }
+}
+
+/* rain overlay */
+let rainDrops = 0;
+function setRain(precip) {
+  const box = document.getElementById('rain');
+  const want = precip > 0.25 ? Math.round(precip * 90) : 0;
+  if (want !== rainDrops) {
+    box.innerHTML = '';
+    for (let i = 0; i < want; i++) {
+      const d = document.createElement('div'); d.className = 'drop';
+      d.style.left = (Math.random() * 100) + 'vw';
+      d.style.animationDuration = (0.4 + Math.random() * 0.5) + 's';
+      d.style.animationDelay = (-Math.random() * 2) + 's';
+      d.style.opacity = 0.4 + Math.random() * 0.5;
+      box.appendChild(d);
+    }
+    rainDrops = want;
+  }
+  box.style.opacity = want ? Math.min(1, 0.3 + precip) : 0;
+}
+
+/* person + parcel at a handover, anchored to the drone */
+function personIcon() {
+  return L.divIcon({ className: 'person', iconSize: [40, 40], iconAnchor: [-6, 30],
+    html: `<svg width="34" height="40" viewBox="0 0 34 40">
+      <rect x="2" y="13" width="9" height="9" rx="2" fill="#ffd166" stroke="#7a5b12"/>            <!-- parcel -->
+      <circle cx="22" cy="9" r="5" fill="#ffd9b0"/>                                               <!-- head -->
+      <rect x="17" y="15" width="10" height="14" rx="4" fill="#3a7bd5"/>                           <!-- torso -->
+      <rect x="19" y="28" width="3" height="9" fill="#26324a"/><rect x="23" y="28" width="3" height="9" fill="#26324a"/>
+    </svg>` });
+}
+function showPerson(pos, kind) {
+  if (!personMarker) personMarker = L.marker(pos, { icon: personIcon(), zIndexOffset: 1200 }).addTo(map)
+    .bindTooltip('', { permanent: true, direction: 'right', offset: [22, 0], className: 'maplabel' });
+  personMarker.setLatLng(pos);
+  personMarker.setTooltipContent(kind === 'pickup' ? 'Shop loading the parcel' : 'Customer collecting');
+  if (!ringMarker) ringMarker = L.marker(pos, { interactive: false, zIndexOffset: 1100, icon: L.divIcon({
+    className: '', iconSize: [60, 60], iconAnchor: [30, 30],
+    html: `<div style="width:60px;height:60px;border-radius:50%;border:3px solid #7CFFB2;animation:ring 1.4s ease-out infinite"></div>` }) }).addTo(map);
+  ringMarker.setLatLng(pos);
+}
+function hidePerson() {
+  if (personMarker) { map.removeLayer(personMarker); personMarker = null; }
+  if (ringMarker) { map.removeLayer(ringMarker); ringMarker = null; }
+}
+
+async function tick() {
+  let geo = null, weather = null, fleet = [];
+  try {
+    const r = await fetch('data/routes.json?t=' + Date.now(), { cache: 'no-store' });
+    if (r.ok) { const d = await r.json(); geo = d.geo; weather = d.weather; fleet = d.drones || [];
+      if (geo && !depotsDrawn && (d.depots || []).length) {
+        d.depots.forEach((dep, i) => L.circleMarker(toLatLon(dep.x, dep.y, geo),
+          { radius: 6, color: '#39d98a', fillColor: '#39d98a', fillOpacity: .85, weight: 1 })
+          .addTo(depotLayer).bindTooltip(i === 0 ? 'Charging depot (base)' : 'Charging depot', { direction: 'top', className: 'maplabel' }));
+        depotsDrawn = true;
+      }
+    }
+  } catch (e) {}
+
+  // weather panel + rain + ground stop
+  if (weather) {
+    document.getElementById('wind').textContent = (weather.wind_mps || 0).toFixed(1) + ' m/s';
+    document.getElementById('temp').textContent = (weather.temp_c || 0).toFixed(0) + ' °C';
+    document.getElementById('precip').textContent = Math.round((weather.precip || 0) * 100) + '%';
+    document.getElementById('windArrow').style.transform = 'rotate(' + (weather.wind_dir_deg || 0) + 'deg)';
+    document.getElementById('gstop').style.display = weather.ops_suspended ? 'block' : 'none';
+    setRain(weather.precip || 0);
+  }
+
+  // fleet of other drones as status-coloured dots (no labels -- legend explains)
+  fleetLayer.clearLayers();
+  let flying = 0, down = 0;
+  if (geo) fleet.forEach((x) => {
+    const st = x.status || 'ok';
+    if (st === 'down') down++; else flying++;
+    const col = st === 'down' ? '#ff5a4d' : st === 'servicing' ? '#2ee68a' : '#9fb0c8';
+    const m = L.circleMarker(toLatLon(x.x, x.y, geo), { radius: st === 'down' ? 6 : 4, color: col,
+      fillColor: col, fillOpacity: .85, weight: st === 'down' ? 2 : 0 }).addTo(fleetLayer);
+    if (x.fault) m.bindTooltip('⚠ ' + x.fault, { direction: 'top', className: 'maplabel' });
+  });
+  document.getElementById('fleetn').textContent = fleet.length + ' drones'
+    + (down ? ' · ' + down + ' grounded' : '');
+
+  // the hero physical drone
+  let fresh = false;
+  try {
+    const tr = await fetch('data/twin.json?t=' + Date.now(), { cache: 'no-store' });
+    if (tr.ok) { const t = await tr.json();
+      if (typeof t.lat === 'number') { fresh = true;
+        const pos = [t.lat, t.lon]; const r = t.route || {};
+        if (!twinMarker) { twinMarker = L.marker(pos, { icon: droneIcon(t.heading), zIndexOffset: 1000 }).addTo(map);
+          twinMarker.bindTooltip('DRONE', { permanent: true, direction: 'right', offset: [12, 0], className: 'maplabel dr' }); }
+        else { twinMarker.setLatLng(pos); twinMarker.setIcon(droneIcon(t.heading)); }
+        if (t.trail && t.trail.length > 1) {
+          if (!trailLine) trailLine = L.polyline(t.trail, { color: '#6fd3ff', weight: 3, opacity: .9 }).addTo(map);
+          else trailLine.setLatLngs(t.trail);
+        }
+        if (r.pickup_ll) pickPin = setPin(pickPin, r.pickup_ll, '#2ee68a', 'pk', 'PICKUP · ' + r.pickup);
+        if (r.dropoff_ll) dropPin = setPin(dropPin, r.dropoff_ll, '#ff8e72', 'dp', 'DROPOFF · ' + r.dropoff);
+        const dest = r.phase === 'to pickup' ? r.pickup_ll : r.dropoff_ll;
+        if (dest) { const seg = [pos, dest];
+          if (!planLine) planLine = L.polyline(seg, { color: '#ffd166', weight: 2, dashArray: '6 7', opacity: .8 }).addTo(map);
+          else planLine.setLatLngs(seg); }
+
+        // landing + person handover
+        if (t.handover) showPerson(pos, t.state === 'handover_pickup' ? 'pickup' : 'dropoff');
+        else hidePerson();
+
+        if (follow) map.panTo(pos, { animate: true, duration: .4 });
+        if (!didInitialFit && pickPin && dropPin) { fitAll(); follow = true; didInitialFit = true; }
+
+        // onboard camera panel + vision status
+        const vz = t.vision || {};
+        document.getElementById('camimg').src = 'data/dronecam.png?t=' + Math.floor(Date.now() / 400);
+        document.getElementById('camalt').textContent = (t.alt != null ? t.alt.toFixed(0) : '--') + 'm';
+        const cl = document.getElementById('camlock');
+        cl.textContent = vz.found ? 'PAD LOCKED' : 'SEARCHING PAD'; cl.className = 'lock' + (vz.found ? '' : ' no');
+        const cc = document.getElementById('camclear');
+        cc.textContent = vz.clear === false ? 'OBSTRUCTED' : 'zone clear'; cc.className = 'clr' + (vz.clear === false ? ' no' : '');
+
+        // confirm-on-arrival button
+        document.getElementById('confirm').style.display = t.await_confirm ? 'block' : 'none';
+
+        // HUD plain-language status
+        const st = document.getElementById('status'); const s = t.state || 'cruise';
+        const M = { descending: ['Descending to deliver', 'land'], climbing: ['Climbing back to cruise', 'land'],
+          servoing: ['Locking onto landing pad (camera)', 'land'], awaiting_confirm: ['Awaiting your confirmation', 'pickup'],
+          handover_pickup: ['Shop loading the parcel', 'land'], handover_dropoff: ['Customer collecting parcel', 'land'] };
+        if (M[s]) { st.textContent = M[s][0]; st.className = M[s][1]; }
+        else if (r.phase === 'to pickup') { st.textContent = 'Flying to collect the parcel'; st.className = 'pickup'; }
+        else if (r.phase === 'to dropoff') { st.textContent = 'Delivering to the customer'; st.className = ''; }
+        else { st.textContent = t.armed ? 'In flight' : 'Idle'; st.className = 'idle'; }
+        document.getElementById('spd').textContent = (t.speed != null ? t.speed.toFixed(1) : '--') + ' m/s';
+        document.getElementById('alt').textContent = (t.alt != null ? t.alt.toFixed(0) : '--') + ' m';
+        document.getElementById('job').innerHTML = r.id
+          ? `<div><span class="lbl">Carrying:</span> <span class="item">${r.item || '--'}</span></div>
+             <div style="margin-top:4px"><span class="lbl">From</span> <span class="pk">${r.pickup || '?'}</span></div>
+             <div><span class="lbl">To</span> <span class="dp">${r.dropoff || '?'}</span></div>`
+          : 'waiting for a delivery…';
+        if (r.id && r.id !== lastRouteId) { lastRouteId = r.id; didInitialFit = false; }
+      }
+    }
+  } catch (e) {}
+  if (!fresh) { const st = document.getElementById('status'); st.textContent = 'no telemetry (bridge offline)'; st.className = 'idle'; }
+}
+setInterval(tick, 500);
+tick();
+</script>
+</body>
+</html>
